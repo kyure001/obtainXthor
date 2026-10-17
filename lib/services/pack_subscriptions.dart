@@ -21,6 +21,53 @@ import 'package:obtainium/providers/source_provider.dart';
 const String packSubscriptionsPrefKey = 'thorPackSubscriptions';
 const String packLastSyncPrefKey = 'thorPackLastSync';
 
+const String packGroupingInitPrefKey = 'thorPackGroupingInit';
+
+/// Les trois familles affichées dans la liste (une seule catégorie par appli,
+/// sinon ObtainX la montrerait dans plusieurs groupes).
+const String familyEmulators = 'Émulateurs';
+const String familyUtilities = 'Utilitaires';
+const String familyRecomp = 'Projets recomp';
+const Map<String, int> familyColors = {
+  familyEmulators: 0xFF3D7BD9,
+  familyUtilities: 0xFF5E8C61,
+  familyRecomp: 0xFFE8833A,
+};
+
+const Set<String> _emulatorCategories = {
+  'emulator', 'emulators', 'émulateur', 'émulateurs', 'pc emulation',
+  'dual screen', 'émulation pc',
+};
+
+/// Émulateurs connus que certains packs laissent sans catégorie.
+const Set<String> _knownEmulatorNames = {
+  'rpcsx', 'armsx1', 'armsx2', 'armsx3', 'eden', 'nethersx2', 'nethersx2-turnip',
+  'aps3e', 'azahar', 'cemu', 'citra', 'citron neo', 'dolphin emulator',
+  'duckstation', 'flycast', 'melonds', 'watermelonds', 'ppsspp', 'play!',
+  'retroarch (aarch64)', 'vita3k', 'winlator', 'gopher64', 'xemu android',
+};
+
+/// Famille d'une appli venant d'un pack.
+String familyForPackApp({
+  required bool fromRecompPack,
+  required List<String> categories,
+  required String name,
+}) {
+  final lowerCats = categories.map((c) => c.toLowerCase().trim()).toSet();
+  if (fromRecompPack) {
+    // Le pack se suit lui-même (catégorie « Pack ») : c'est un outil.
+    return lowerCats.contains('pack') ? familyUtilities : familyRecomp;
+  }
+  if (lowerCats.any(_emulatorCategories.contains) ||
+      _knownEmulatorNames.contains(name.toLowerCase().trim())) {
+    return familyEmulators;
+  }
+  return familyUtilities;
+}
+
+bool isRecompPackUrl(String url) =>
+    normalizePackUrl(url).contains('obtainium_recomp_pack');
+
 /// Délai minimal entre deux synchronisations automatiques.
 const Duration packAutoSyncInterval = Duration(hours: 20);
 
@@ -50,10 +97,12 @@ class PackSubscription {
     this.enabled = true,
     this.builtin = false,
     Set<String>? seen,
+    Set<String>? categorized,
     this.lastSync,
     this.lastResult,
     this.lastError = false,
-  }) : seen = seen ?? <String>{};
+  }) : seen = seen ?? <String>{},
+       categorized = categorized ?? <String>{};
 
   String name;
   String url;
@@ -62,6 +111,10 @@ class PackSubscription {
 
   /// Clés (ID déclaré dans le pack) déjà rencontrées pour ce pack.
   Set<String> seen;
+
+  /// Clés des applis déjà rangées dans leur famille (une seule fois, pour ne
+  /// jamais défaire un classement modifié à la main).
+  Set<String> categorized;
   DateTime? lastSync;
   String? lastResult;
   bool lastError;
@@ -72,6 +125,7 @@ class PackSubscription {
     'enabled': enabled,
     'builtin': builtin,
     'seen': seen.toList(),
+    'categorized': categorized.toList(),
     'lastSync': lastSync?.toIso8601String(),
     'lastResult': lastResult,
     'lastError': lastError,
@@ -83,6 +137,9 @@ class PackSubscription {
     enabled: j['enabled'] != false,
     builtin: j['builtin'] == true,
     seen: ((j['seen'] as List<dynamic>?) ?? const [])
+        .map((e) => e.toString())
+        .toSet(),
+    categorized: ((j['categorized'] as List<dynamic>?) ?? const [])
         .map((e) => e.toString())
         .toSet(),
     lastSync: j['lastSync'] == null
@@ -196,7 +253,9 @@ Future<PackSyncReport?> syncPacks(
   LogsProvider? logs,
 }) async {
   if (_syncRunning) return null;
-  if (onlyIfDue) {
+  // La première synchro après l'arrivée des familles se fait tout de suite,
+  // pour ranger les applis déjà présentes sans attendre 20 h.
+  if (onlyIfDue && sp.prefs?.getBool(packGroupingInitPrefKey) == true) {
     final DateTime? last = lastPackSync(sp);
     if (last != null && DateTime.now().difference(last) < packAutoSyncInterval) {
       return null;
@@ -207,6 +266,7 @@ Future<PackSyncReport?> syncPacks(
   try {
     await appsProvider.waitForAppsToLoad();
     final List<PackSubscription> subs = loadPackSubscriptions(sp);
+    final Set<String> packCategoryNames = {};
     for (final sub in subs.where((s) => s.enabled)) {
       try {
         final http.Response res = await http
@@ -233,9 +293,19 @@ Future<PackSyncReport?> syncPacks(
           seen: sub.seen,
         );
 
+        final bool fromRecomp = isRecompPackUrl(sub.url);
+        String keyOf(App a) => a.id.isNotEmpty ? a.id : normalizePackUrl(a.url);
+        List<String> familyOf(App a) => [
+          familyForPackApp(
+            fromRecompPack: fromRecomp,
+            categories: a.categories,
+            name: a.finalName,
+          ),
+        ];
+
         final List<App> toSave = [];
         for (final i in plan.indicesToAdd) {
-          final App a = packApps[i];
+          final App a = packApps[i].copyWith(categories: familyOf(packApps[i]));
           final installed = await getInstalledInfo(a.id, printErr: false);
           toSave.add(
             a.copyWith(
@@ -251,24 +321,43 @@ Future<PackSyncReport?> syncPacks(
           report.addedNames.addAll(toSave.map((a) => a.finalName));
         }
 
-        // Catégories du pack manquantes chez l'utilisateur.
+        // Applis du pack déjà suivies et pas encore rangées : on les range une
+        // fois dans leur famille (migration des versions précédentes).
+        final Map<String, App> byId = {for (final a in existing) a.id: a};
+        final Map<String, App> byUrl = {
+          for (final a in existing) normalizePackUrl(a.url): a,
+        };
+        final List<App> recategorized = [];
+        final Set<String> addedKeys = {
+          for (final i in plan.indicesToAdd) keyOf(packApps[i]),
+        };
+        for (final p in packApps) {
+          final String k = keyOf(p);
+          if (sub.categorized.contains(k)) continue;
+          sub.categorized.add(k);
+          if (addedKeys.contains(k)) continue;
+          final App? mine = byId[p.id] ?? byUrl[normalizePackUrl(p.url)];
+          if (mine == null) continue;
+          // Déjà rangée (par un pack précédent ou à la main) : on n'y touche pas.
+          if (mine.categories.any(familyColors.containsKey)) continue;
+          final fam = familyOf(p);
+          if (mine.categories.length != 1 || mine.categories.first != fam.first) {
+            recategorized.add(mine.copyWith(categories: fam));
+          }
+        }
+        if (recategorized.isNotEmpty) {
+          await appsProvider.saveApps(recategorized);
+        }
+
+        // Noms de catégories du pack : nettoyés en fin de synchro s'ils ne
+        // servent plus (les applis du pack sont rangées en trois familles).
         if (decoded is Map && decoded['settings'] is Map) {
           dynamic cats = decoded['settings']['categories'];
           if (cats is String) cats = jsonDecode(cats);
-          if (cats is Map) {
-            final Map<String, int> current = sp.categories;
-            bool changed = false;
-            cats.forEach((k, v) {
-              final int? color = v is int ? v : int.tryParse(v.toString());
-              if (!current.containsKey(k) && color != null) {
-                current[k.toString()] = color;
-                changed = true;
-              }
-            });
-            if (changed) {
-              sp.setCategories(current, appsProvider: appsProvider);
-            }
-          }
+          if (cats is Map) packCategoryNames.addAll(cats.keys.map((k) => '$k'));
+        }
+        for (final a in packApps) {
+          packCategoryNames.addAll(a.categories);
         }
 
         sub
@@ -288,6 +377,7 @@ Future<PackSyncReport?> syncPacks(
       }
     }
     await savePackSubscriptions(sp, subs);
+    _applyFamilies(appsProvider, sp, packCategoryNames);
     await sp.prefs?.setString(
       packLastSyncPrefKey,
       DateTime.now().toIso8601String(),
@@ -296,5 +386,45 @@ Future<PackSyncReport?> syncPacks(
     return report;
   } finally {
     _syncRunning = false;
+  }
+}
+
+
+/// Ajoute les trois familles, retire les catégories venues des packs qui ne
+/// servent plus à aucune appli, et active une fois le regroupement par catégorie.
+void _applyFamilies(
+  AppsProvider appsProvider,
+  SettingsProvider sp,
+  Set<String> packCategoryNames,
+) {
+  final Map<String, int> cats = sp.categories;
+  bool changed = false;
+  familyColors.forEach((k, v) {
+    if (!cats.containsKey(k)) {
+      cats[k] = v;
+      changed = true;
+    }
+  });
+  final Set<String> used = {
+    for (final a in appsProvider.getAppValues()) ...a.app.categories,
+  };
+  for (final name in packCategoryNames) {
+    if (familyColors.containsKey(name)) continue;
+    if (cats.containsKey(name) && !used.contains(name)) {
+      cats.remove(name);
+      changed = true;
+    }
+  }
+  if (changed) sp.setCategories(cats, appsProvider: appsProvider);
+  // L'appli elle-même, si elle n'a pas de catégorie, va dans les utilitaires.
+  final self = appsProvider.apps[obtainiumId]?.app;
+  if (self != null && self.categories.isEmpty) {
+    unawaited(appsProvider.saveApps([self.copyWith(categories: [familyUtilities])]));
+  }
+  if (sp.prefs?.getBool(packGroupingInitPrefKey) != true) {
+    sp.prefs?.setBool(packGroupingInitPrefKey, true);
+    if (sp.appsListGroupBy == AppsListGroupBy.none) {
+      sp.appsListGroupBy = AppsListGroupBy.category;
+    }
   }
 }

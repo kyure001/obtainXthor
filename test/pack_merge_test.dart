@@ -64,4 +64,35 @@ void main() {
   test('normalizePackUrl', () {
     expect(normalizePackUrl('HTTPS://www.GitHub.com/A/B.git/'), 'github.com/a/b');
   });
+
+  group('familyForPackApp', () {
+    test('tout le pack Recomp va dans Projets recomp', () {
+      expect(
+        familyForPackApp(fromRecompPack: true, categories: ['Nintendo 64'], name: 'GoldenEye Recomp'),
+        familyRecomp,
+      );
+    });
+    test("l'entrée qui suit le pack Recomp est un utilitaire", () {
+      expect(
+        familyForPackApp(fromRecompPack: true, categories: ['Pack'], name: 'Obtainium Recomp Pack'),
+        familyUtilities,
+      );
+    });
+    test('émulateurs RJNY / Joey (catégorie ou nom connu)', () {
+      expect(familyForPackApp(fromRecompPack: false, categories: ['Emulator'], name: 'PPSSPP'), familyEmulators);
+      expect(familyForPackApp(fromRecompPack: false, categories: ['PC Emulation'], name: 'Winlator'), familyEmulators);
+      expect(familyForPackApp(fromRecompPack: false, categories: ['Dual Screen'], name: 'Cemu'), familyEmulators);
+      expect(familyForPackApp(fromRecompPack: false, categories: [], name: 'RPCSX'), familyEmulators);
+    });
+    test('frontends, streaming et outils vont dans Utilitaires', () {
+      expect(familyForPackApp(fromRecompPack: false, categories: ['Frontend'], name: 'Pegasus'), familyUtilities);
+      expect(familyForPackApp(fromRecompPack: false, categories: ['Streaming'], name: 'Moonlight'), familyUtilities);
+      expect(familyForPackApp(fromRecompPack: false, categories: [], name: 'Syncthing-Fork'), familyUtilities);
+    });
+  });
+
+  test('isRecompPackUrl', () {
+    expect(isRecompPackUrl('https://github.com/kyure001/obtainium_recomp_pack/releases/latest/download/thor-pack.json'), isTrue);
+    expect(isRecompPackUrl('https://raw.githubusercontent.com/RJNY/Obtainium-Emulation-Pack/main/x.json'), isFalse);
+  });
 }
