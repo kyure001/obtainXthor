@@ -40,6 +40,7 @@ import 'package:obtainium/theme.dart';
 import 'package:obtainium/theme/app_dialog_theme.dart';
 import 'package:obtainium/theme/app_form_field_styles.dart';
 import 'package:obtainium/theme/app_theme_accent.dart';
+import 'package:obtainium/pages/packs_section.dart';
 import 'package:obtainium/theme/m3e_expressive_list.dart';
 import 'package:obtainium/widgets/app_toast.dart';
 import 'package:obtainium/services/pick_file.dart';
@@ -483,6 +484,12 @@ class SettingsPageState extends State<SettingsPage> {
         screenWidth >= kLargeScreenWidthBreakpoint && !sp.alwaysUsePhoneLayout;
 
     final List<_SettingsCategory> categoriesList = [
+      _SettingsCategory(
+        key: 'thorPacks',
+        title: 'Packs',
+        icon: Icons.inventory_2_rounded,
+        widget: const PacksSettingsSection(),
+      ),
       _SettingsCategory(
         key: 'updates',
         title: tr('updates'),
@@ -959,6 +966,16 @@ class SettingsPageState extends State<SettingsPage> {
                               collapsibleCard(
                                 'interaction',
                                 const _InteractionSection(),
+                              ),
+                              // ── Packs (ObtainX Thor) ─────────────────────
+                              sectionHeader(
+                                'Packs',
+                                Icons.inventory_2_rounded,
+                                'thorPacks',
+                              ),
+                              collapsibleCard(
+                                'thorPacks',
+                                const PacksSettingsSection(),
                               ),
                               // ── Categories ───────────────────────────────
                               sectionHeader(

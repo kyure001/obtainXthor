@@ -21,9 +21,9 @@ import 'package:device_info_plus/device_info_plus.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:shared_storage/shared_storage.dart' as saf;
 
-String obtainiumTempId = 'bikram-agarwal_ObtainX_${GitHub().hosts[0]}';
-String obtainiumId = 'dev.bikram.obtainx';
-String obtainiumUrl = 'https://github.com/bikram-agarwal/ObtainX';
+String obtainiumTempId = 'kyure001_obtainXthor_${GitHub().hosts[0]}';
+String obtainiumId = 'dev.kyure.obtainxthor';
+String obtainiumUrl = 'https://github.com/kyure001/obtainXthor';
 Color obtainiumThemeColor = const Color(0xFF6438B5);
 
 // Cached mirror of [SettingsProvider.tactileFeedbackEnabled]. Haptic feedback fires
@@ -150,7 +150,7 @@ class SettingsProvider with ChangeNotifier {
   String? _savedSeedHexesRaw;
   List<String>? _savedSeedHexesDecoded;
 
-  String sourceUrl = 'https://github.com/bikram-agarwal/ObtainX';
+  String sourceUrl = 'https://github.com/kyure001/obtainXthor';
 
   // Not done in constructor as we want to be able to await it
   Future<void> initializeSettings() async {

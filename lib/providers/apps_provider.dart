@@ -25,6 +25,7 @@ import 'package:obtainium/custom_errors.dart';
 import 'package:obtainium/http/obtainx_user_agent.dart';
 import 'package:obtainium/http/response_bytes.dart';
 import 'package:obtainium/services/app_check_store.dart';
+import 'package:obtainium/services/pack_subscriptions.dart';
 import 'package:obtainium/providers/logs_provider.dart';
 import 'package:obtainium/providers/notifications_provider.dart';
 import 'package:obtainium/providers/settings_provider.dart';
@@ -1998,6 +1999,19 @@ Future<void> bgUpdateCheck(
       (netResult.contains(ConnectivityResult.vpn) && netResult.length == 1)) {
     unawaited(bgLogs.add('BG update task: No network.'));
     return;
+  }
+
+  // ObtainX Thor : synchro quotidienne des packs abonnés, avant la recherche
+  // de mises à jour pour que les applis ajoutées soient vérifiées aussitôt.
+  try {
+    await syncPacks(
+      appsProvider,
+      appsProvider.settingsProvider,
+      onlyIfDue: true,
+      logs: bgLogs,
+    );
+  } catch (e) {
+    unawaited(bgLogs.add('Pack sync failed: $e', level: LogLevel.warning));
   }
 
   if (appsProvider.settingsProvider.updateInterval == 0) {

@@ -1,3 +1,20 @@
+# ObtainX Thor
+
+Fork personnel d'[ObtainX](https://github.com/bikram-agarwal/ObtainX) (lui-même fork d'[Obtainium](https://github.com/ImranR98/Obtainium)), pensé pour l'AYN Thor.
+
+**Ajout principal : l'abonnement à des packs Obtainium en ligne.** Réglages → Packs. Les packs abonnés sont synchronisés une fois par jour : les applis nouvelles sont ajoutées sans réimport manuel, celles que tu supprimes ne reviennent pas, tes réglages ne sont jamais écrasés.
+
+Packs inclus d'office :
+- [Obtainium Recomp Pack](https://github.com/kyure001/obtainium_recomp_pack) — ports decomp / recomp
+- [Obtainium Emulation Pack](https://github.com/RJNY/Obtainium-Emulation-Pack) (RJNY) — émulateurs, frontends, outils double écran
+- [Joey's Retro Handhelds](https://github.com/JoeysRetroHandhelds/joeys-obtainium)
+
+L'APK arm64 signé est publié dans les [releases](https://github.com/kyure001/obtainXthor/releases/latest). Identifiant : `dev.kyure.obtainxthor` (cohabite avec Obtainium et ObtainX).
+
+Licence GPL-3.0, comme le projet d'origine. Tout le mérite de l'application revient à ImranR98, Bikram Agarwal et aux contributeurs d'Obtainium / ObtainX.
+
+---
+
 # ObtainX
 
 <img alt="ObtainX — get Android app updates straight from the source" src="fastlane/metadata/android/en-US/images/featureGraphic.png" />

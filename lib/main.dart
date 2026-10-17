@@ -31,6 +31,7 @@ import 'package:easy_localization/src/easy_localization_controller.dart';
 // ignore: implementation_imports
 import 'package:easy_localization/src/localization.dart';
 import 'package:flutter_foreground_task/flutter_foreground_task.dart';
+import 'package:obtainium/services/pack_subscriptions.dart';
 
 List<MapEntry<Locale, String>> supportedLocales = const [
   MapEntry(Locale('en'), 'English'),
@@ -82,6 +83,7 @@ final scaffoldMessengerKey = GlobalKey<ScaffoldMessengerState>();
 // the shell to switch tabs — findAncestorStateOfType can't, since those routes
 // are siblings of HomePage under the root navigator, not descendants.
 final homePageKey = GlobalKey<HomePageState>();
+bool _packSyncStartedThisSession = false;
 
 void installDiagnosticErrorLogging() {
   final logs = LogsProvider(runDefaultClear: false);
@@ -878,8 +880,8 @@ class _ObtainiumState extends State<Obtainium> with WidgetsBindingObserver {
                     App(
                       id: obtainiumId,
                       url: obtainiumUrl,
-                      author: 'Bikram-Agarwal',
-                      name: 'ObtainX',
+                      author: 'kyure001',
+                      name: 'ObtainX Thor',
                       installedVersion: value!.versionName,
                       latestVersion: value.versionName!,
                       apkUrls: [],
@@ -899,6 +901,19 @@ class _ObtainiumState extends State<Obtainium> with WidgetsBindingObserver {
                 debugPrint(err.toString());
               });
         }
+      }
+      // ObtainX Thor : synchro des packs au lancement (une fois par session,
+      // et seulement si la dernière date de plus de 20 h ; toujours au 1er lancement).
+      if (!_packSyncStartedThisSession) {
+        _packSyncStartedThisSession = true;
+        unawaited(
+          syncPacks(
+            appsProvider,
+            settingsProvider,
+            onlyIfDue: !isFirstRun,
+            logs: logs,
+          ).catchError((_) => null),
+        );
       }
       final forcedLocale = settingsProvider.forcedLocale;
       if (forcedLocale != null) {
