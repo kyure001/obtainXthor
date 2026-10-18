@@ -72,6 +72,12 @@ void main() {
         familyRecomp,
       );
     });
+    test('une entrée Emulator du pack Recomp va chez les émulateurs', () {
+      expect(
+        familyForPackApp(fromRecompPack: true, categories: ['Emulator'], name: 'Eden DS (Dual Screen)'),
+        familyEmulators,
+      );
+    });
     test("l'entrée qui suit le pack Recomp est un utilitaire", () {
       expect(
         familyForPackApp(fromRecompPack: true, categories: ['Pack'], name: 'Obtainium Recomp Pack'),

@@ -54,6 +54,9 @@ String familyForPackApp({
   required String name,
 }) {
   final lowerCats = categories.map((c) => c.toLowerCase().trim()).toSet();
+  // Un pack peut marquer une entrée comme émulateur (ex. Eden DS dans le
+  // pack Recomp) : ça prime sur la famille par défaut du pack.
+  if (lowerCats.any(_emulatorCategories.contains)) return familyEmulators;
   if (fromRecompPack) {
     // Le pack se suit lui-même (catégorie « Pack ») : c'est un outil.
     return lowerCats.contains('pack') ? familyUtilities : familyRecomp;
