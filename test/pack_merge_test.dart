@@ -3,7 +3,7 @@ import 'package:obtainium/services/pack_subscriptions.dart';
 
 void main() {
   group('planPackMerge', () {
-    test('ajoute les applis nouvelles et les marque comme vues', () {
+    test('adds new apps and marks them as seen', () {
       final plan = planPackMerge(
         entries: [('a.id', 'https://github.com/x/a'), ('b.id', 'https://github.com/x/b')],
         existingIds: {},
@@ -14,7 +14,7 @@ void main() {
       expect(plan.newSeen, {'a.id', 'b.id'});
     });
 
-    test("n'ajoute pas une appli déjà suivie (même ID ou même URL)", () {
+    test('skips an app that is already tracked (same ID or same URL)', () {
       final plan = planPackMerge(
         entries: [
           ('a.id', 'https://github.com/x/a'),
@@ -28,7 +28,7 @@ void main() {
       expect(plan.newSeen, {'a.id', 'autre.id'});
     });
 
-    test('une appli supprimée par l\'utilisateur ne revient pas', () {
+    test('an app removed by the user does not come back', () {
       final plan = planPackMerge(
         entries: [('a.id', 'https://github.com/x/a')],
         existingIds: {},
@@ -38,9 +38,9 @@ void main() {
       expect(plan.indicesToAdd, isEmpty);
     });
 
-    test('ID provisoire corrigé après installation : pas de doublon', () {
-      // Le pack déclare thorpack.x, l'appli est désormais suivie sous son vrai
-      // package : l'URL suffit à la reconnaître lors de la première synchro.
+    test('placeholder ID replaced after install: no duplicate', () {
+      // The pack declares thorpack.x while the app is now tracked under its real
+      // package name: the URL alone is enough to recognize it on first sync.
       final plan = planPackMerge(
         entries: [('thorpack.x', 'https://github.com/owner/x')],
         existingIds: {'com.vrai.package'},
@@ -50,7 +50,7 @@ void main() {
       expect(plan.indicesToAdd, isEmpty);
     });
 
-    test('doublon entre deux entrées du même pack : la première gagne', () {
+    test('duplicate entries in one pack: the first one wins', () {
       final plan = planPackMerge(
         entries: [('a.id', 'https://github.com/x/a'), ('a.id', 'https://github.com/y/a')],
         existingIds: {},
@@ -66,37 +66,37 @@ void main() {
   });
 
   group('familyForPackApp', () {
-    test('tout le pack Recomp va dans Projets recomp', () {
+    test('Recomp pack games go to the recomp family', () {
       expect(
         familyForPackApp(fromRecompPack: true, categories: ['Nintendo 64'], name: 'GoldenEye Recomp'),
         familyRecomp,
       );
     });
-    test('une entrée Emulator du pack Recomp va chez les émulateurs', () {
+    test('an Emulator entry of the Recomp pack goes to emulators', () {
       expect(
         familyForPackApp(fromRecompPack: true, categories: ['Emulator'], name: 'Eden DS (Dual Screen)'),
         familyEmulators,
       );
     });
-    test("l'entrée qui suit le pack Recomp est un utilitaire", () {
+    test('the entry tracking the Recomp pack is a utility', () {
       expect(
         familyForPackApp(fromRecompPack: true, categories: ['Pack'], name: 'Obtainium Recomp Pack'),
         familyUtilities,
       );
     });
-    test('une entrée Utilities du pack Recomp va dans Utilitaires', () {
+    test('a Utilities entry of the Recomp pack goes to utilities', () {
       expect(
         familyForPackApp(fromRecompPack: true, categories: ['Utilities'], name: 'SecondDeck'),
         familyUtilities,
       );
     });
-    test('émulateurs RJNY / Joey (catégorie ou nom connu)', () {
+    test('RJNY / Joey emulators (by category or known name)', () {
       expect(familyForPackApp(fromRecompPack: false, categories: ['Emulator'], name: 'PPSSPP'), familyEmulators);
       expect(familyForPackApp(fromRecompPack: false, categories: ['PC Emulation'], name: 'Winlator'), familyEmulators);
       expect(familyForPackApp(fromRecompPack: false, categories: ['Dual Screen'], name: 'Cemu'), familyEmulators);
       expect(familyForPackApp(fromRecompPack: false, categories: [], name: 'RPCSX'), familyEmulators);
     });
-    test('frontends, streaming et outils vont dans Utilitaires', () {
+    test('frontends, streaming and tools go to utilities', () {
       expect(familyForPackApp(fromRecompPack: false, categories: ['Frontend'], name: 'Pegasus'), familyUtilities);
       expect(familyForPackApp(fromRecompPack: false, categories: ['Streaming'], name: 'Moonlight'), familyUtilities);
       expect(familyForPackApp(fromRecompPack: false, categories: [], name: 'Syncthing-Fork'), familyUtilities);

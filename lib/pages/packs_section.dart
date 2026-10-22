@@ -1,4 +1,4 @@
-// ObtainX Thor : section « Packs » des réglages.
+// ObtainX Thor: "Packs" settings section (UI strings are in French, the app's UI language).
 
 import 'package:flutter/material.dart';
 import 'package:obtainium/providers/apps_provider.dart';

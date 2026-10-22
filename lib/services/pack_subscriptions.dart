@@ -1,13 +1,15 @@
-// ObtainX Thor : abonnement à des packs d'import Obtainium publiés en ligne.
+// ObtainX Thor: subscriptions to Obtainium import packs published online.
 //
-// Un pack est un fichier JSON au format d'export Obtainium ({"apps": [...],
-// "settings": {...}}). Une synchronisation télécharge chaque pack activé et
-// ajoute uniquement les applis qu'elle n'a encore jamais vues pour ce pack :
-// - une appli déjà suivie (même ID ou même URL de source) n'est pas modifiée,
-//   les réglages de l'utilisateur restent intacts ;
-// - une appli que l'utilisateur supprime ne revient pas à la synchro suivante ;
-// - les catégories du pack absentes chez l'utilisateur sont ajoutées, sans
-//   toucher aux couleurs existantes.
+// A pack is a JSON file in Obtainium's export format ({"apps": [...],
+// "settings": {...}}). A sync downloads every enabled pack and only adds the
+// apps it has never seen before for that pack:
+// - an app that is already tracked (same ID or same source URL) is left
+//   untouched, so the user's settings are preserved;
+// - an app the user removes does not come back on the next sync;
+// - every pack app is filed into one of three families (emulators,
+//   utilities, recomp projects), without overriding manual changes.
+//
+// User-facing strings stay in French on purpose: the app's UI language.
 
 import 'dart:async';
 import 'dart:convert';
@@ -23,8 +25,8 @@ const String packLastSyncPrefKey = 'thorPackLastSync';
 
 const String packGroupingInitPrefKey = 'thorPackGroupingInit';
 
-/// Les trois familles affichées dans la liste (une seule catégorie par appli,
-/// sinon ObtainX la montrerait dans plusieurs groupes).
+/// The three families shown in the app list. Each pack app gets exactly one
+/// category, otherwise ObtainX would show it in several groups.
 const String familyEmulators = 'Émulateurs';
 const String familyUtilities = 'Utilitaires';
 const String familyRecomp = 'Projets recomp';
@@ -43,7 +45,7 @@ const Set<String> _utilityCategories = {
   'pack', 'utilities', 'utility', 'utilitaires', 'outil thor',
 };
 
-/// Émulateurs connus que certains packs laissent sans catégorie.
+/// Well-known emulators that some packs leave uncategorized.
 const Set<String> _knownEmulatorNames = {
   'rpcsx', 'armsx1', 'armsx2', 'armsx3', 'eden', 'nethersx2', 'nethersx2-turnip',
   'aps3e', 'azahar', 'cemu', 'citra', 'citron neo', 'dolphin emulator',
@@ -51,19 +53,19 @@ const Set<String> _knownEmulatorNames = {
   'retroarch (aarch64)', 'vita3k', 'winlator', 'gopher64', 'xemu android',
 };
 
-/// Famille d'une appli venant d'un pack.
+/// Family of an app coming from a pack.
 String familyForPackApp({
   required bool fromRecompPack,
   required List<String> categories,
   required String name,
 }) {
   final lowerCats = categories.map((c) => c.toLowerCase().trim()).toSet();
-  // Un pack peut marquer une entrée comme émulateur (ex. Eden DS dans le
-  // pack Recomp) : ça prime sur la famille par défaut du pack.
+  // A pack can flag an entry as an emulator (e.g. Eden DS in the Recomp
+  // pack): this wins over the pack's default family.
   if (lowerCats.any(_emulatorCategories.contains)) return familyEmulators;
   if (fromRecompPack) {
-    // Le pack se suit lui-même (« Pack ») et peut marquer des outils
-    // (« Utilities ») : ce sont des utilitaires, le reste est un jeu.
+    // The pack tracks itself ("Pack") and can flag tools ("Utilities"):
+    // those are utilities, everything else is a game.
     return lowerCats.any(_utilityCategories.contains)
         ? familyUtilities
         : familyRecomp;
@@ -78,10 +80,10 @@ String familyForPackApp({
 bool isRecompPackUrl(String url) =>
     normalizePackUrl(url).contains('obtainium_recomp_pack');
 
-/// Délai minimal entre deux synchronisations automatiques.
+/// Minimum delay between two automatic syncs.
 const Duration packAutoSyncInterval = Duration(hours: 20);
 
-/// Packs proposés d'office. Ils peuvent être désactivés, pas supprimés.
+/// Built-in packs. They can be disabled but not removed.
 const List<Map<String, String>> builtinPacks = [
   {
     'name': 'Recomp Pack (ports decomp/recomp)',
@@ -119,11 +121,11 @@ class PackSubscription {
   bool enabled;
   bool builtin;
 
-  /// Clés (ID déclaré dans le pack) déjà rencontrées pour ce pack.
+  /// Keys (ID declared in the pack) already seen for this pack.
   Set<String> seen;
 
-  /// Clés des applis déjà rangées dans leur famille (une seule fois, pour ne
-  /// jamais défaire un classement modifié à la main).
+  /// Keys of apps already filed into their family (done once, so a
+  /// category changed by hand is never overridden).
   Set<String> categorized;
   DateTime? lastSync;
   String? lastResult;
@@ -160,7 +162,7 @@ class PackSubscription {
   );
 }
 
-/// Normalise une URL de source pour comparer deux applis.
+/// Normalizes a source URL so two apps can be compared.
 String normalizePackUrl(String url) {
   var u = url.trim().toLowerCase();
   u = u.replaceFirst(RegExp(r'^https?://(www\.)?'), '');
@@ -171,14 +173,14 @@ String normalizePackUrl(String url) {
   return u;
 }
 
-/// Résultat du calcul pur d'une synchro (testable sans Flutter).
+/// Result of the pure merge computation (testable without Flutter).
 class PackMergePlan {
   PackMergePlan(this.indicesToAdd, this.newSeen);
   final List<int> indicesToAdd;
   final Set<String> newSeen;
 }
 
-/// [entries] : (id déclaré, url) de chaque appli du pack, dans l'ordre.
+/// [entries]: (declared id, url) of every app in the pack, in order.
 PackMergePlan planPackMerge({
   required List<(String id, String url)> entries,
   required Set<String> existingIds,
@@ -241,7 +243,7 @@ DateTime? lastPackSync(SettingsProvider sp) {
   return raw == null ? null : DateTime.tryParse(raw);
 }
 
-/// Résumé d'une synchro, pour l'affichage.
+/// Summary of a sync, for display.
 class PackSyncReport {
   int added = 0;
   int failedPacks = 0;
@@ -254,8 +256,8 @@ class PackSyncReport {
 
 bool _syncRunning = false;
 
-/// Synchronise tous les packs activés. Avec [onlyIfDue], ne fait rien si la
-/// dernière synchro date de moins de [packAutoSyncInterval].
+/// Syncs every enabled pack. With [onlyIfDue], does nothing if the last sync
+/// is more recent than [packAutoSyncInterval].
 Future<PackSyncReport?> syncPacks(
   AppsProvider appsProvider,
   SettingsProvider sp, {
@@ -263,8 +265,8 @@ Future<PackSyncReport?> syncPacks(
   LogsProvider? logs,
 }) async {
   if (_syncRunning) return null;
-  // La première synchro après l'arrivée des familles se fait tout de suite,
-  // pour ranger les applis déjà présentes sans attendre 20 h.
+  // The first sync after families were introduced runs right away, so
+  // existing apps get filed without waiting 20 hours.
   if (onlyIfDue && sp.prefs?.getBool(packGroupingInitPrefKey) == true) {
     final DateTime? last = lastPackSync(sp);
     if (last != null && DateTime.now().difference(last) < packAutoSyncInterval) {
@@ -331,8 +333,8 @@ Future<PackSyncReport?> syncPacks(
           report.addedNames.addAll(toSave.map((a) => a.finalName));
         }
 
-        // Applis du pack déjà suivies et pas encore rangées : on les range une
-        // fois dans leur famille (migration des versions précédentes).
+        // Pack apps already tracked but not filed yet: file them once into
+        // their family (migration from earlier versions).
         final Map<String, App> byId = {for (final a in existing) a.id: a};
         final Map<String, App> byUrl = {
           for (final a in existing) normalizePackUrl(a.url): a,
@@ -348,7 +350,7 @@ Future<PackSyncReport?> syncPacks(
           if (addedKeys.contains(k)) continue;
           final App? mine = byId[p.id] ?? byUrl[normalizePackUrl(p.url)];
           if (mine == null) continue;
-          // Déjà rangée (par un pack précédent ou à la main) : on n'y touche pas.
+          // Already filed (by another pack or by hand): leave it alone.
           if (mine.categories.any(familyColors.containsKey)) continue;
           final fam = familyOf(p);
           if (mine.categories.length != 1 || mine.categories.first != fam.first) {
@@ -359,8 +361,8 @@ Future<PackSyncReport?> syncPacks(
           await appsProvider.saveApps(recategorized);
         }
 
-        // Noms de catégories du pack : nettoyés en fin de synchro s'ils ne
-        // servent plus (les applis du pack sont rangées en trois familles).
+        // Pack category names: removed at the end of the sync once unused
+        // (pack apps are filed into the three families instead).
         if (decoded is Map && decoded['settings'] is Map) {
           dynamic cats = decoded['settings']['categories'];
           if (cats is String) cats = jsonDecode(cats);
@@ -400,8 +402,8 @@ Future<PackSyncReport?> syncPacks(
 }
 
 
-/// Ajoute les trois familles, retire les catégories venues des packs qui ne
-/// servent plus à aucune appli, et active une fois le regroupement par catégorie.
+/// Adds the three families, removes pack categories no app uses anymore, and
+/// turns on grouping by category once.
 void _applyFamilies(
   AppsProvider appsProvider,
   SettingsProvider sp,
@@ -426,7 +428,7 @@ void _applyFamilies(
     }
   }
   if (changed) sp.setCategories(cats, appsProvider: appsProvider);
-  // L'appli elle-même, si elle n'a pas de catégorie, va dans les utilitaires.
+  // The app itself goes into utilities if it has no category.
   final self = appsProvider.apps[obtainiumId]?.app;
   if (self != null && self.categories.isEmpty) {
     unawaited(appsProvider.saveApps([self.copyWith(categories: [familyUtilities])]));

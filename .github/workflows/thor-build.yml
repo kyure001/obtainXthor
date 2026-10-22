@@ -1,4 +1,4 @@
-name: ObtainX Thor – build et release
+name: ObtainX Thor – build and release
 
 on:
   push:
@@ -45,16 +45,16 @@ jobs:
           key: gradle-${{ runner.os }}-${{ hashFiles('**/*.gradle*', '**/gradle-wrapper.properties') }}
           restore-keys: gradle-${{ runner.os }}-
 
-      - name: Dépendances
+      - name: Dependencies
         run: flutter pub get
 
-      - name: Tests de la synchro des packs
+      - name: Pack sync tests
         run: flutter test test/pack_merge_test.dart
 
-      - name: Analyse du code ObtainX Thor
+      - name: Analyze ObtainX Thor code
         run: flutter analyze --no-fatal-infos --no-fatal-warnings lib/services/pack_subscriptions.dart lib/pages/packs_section.dart lib/main.dart lib/providers/apps_provider.dart lib/pages/settings.dart
 
-      - name: Signature
+      - name: Signing
         id: signing
         env:
           KEYSTORE_B64: ${{ secrets.KEYSTORE_BASE64 }}
@@ -62,7 +62,7 @@ jobs:
           K_ALIAS: ${{ secrets.KEY_ALIAS }}
         run: |
           if [ -z "$KEYSTORE_B64" ] || [ -z "$KS_PASS" ] || [ -z "$K_ALIAS" ]; then
-            echo "::warning::Secrets de signature absents : APK non signé, pas de release."
+            echo "::warning::Signing secrets missing: unsigned APK, no release."
             echo "signed=false" >> "$GITHUB_OUTPUT"
             exit 0
           fi
@@ -92,7 +92,7 @@ jobs:
           mv "$OUT/app-normal-release.apk" "$OUT/ObtainX-Thor-v${{ steps.version.outputs.name }}-arm64-v8a.apk"
           ls -l "$OUT"
 
-      - name: Artefact
+      - name: Artifact
         uses: actions/upload-artifact@v4
         with:
           name: obtainx-thor-${{ steps.version.outputs.name }}
@@ -106,5 +106,5 @@ jobs:
           gh release create "v${{ steps.version.outputs.name }}" \
             build/app/outputs/flutter-apk/ObtainX-Thor-*.apk \
             --title "ObtainX Thor ${{ steps.version.outputs.name }}" \
-            --notes "Fork d'ObtainX avec abonnement aux packs Obtainium (Recomp, RJNY, Joey's). Basé sur ObtainX $(grep -oP '^version: \K[^+]+' pubspec.yaml)." \
+            --notes "ObtainX fork with Obtainium pack subscriptions (Recomp, RJNY, Joey's). Based on ObtainX $(grep -oP '^version: \K[^+]+' pubspec.yaml)." \
             --latest

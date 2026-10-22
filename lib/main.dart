@@ -902,8 +902,8 @@ class _ObtainiumState extends State<Obtainium> with WidgetsBindingObserver {
               });
         }
       }
-      // ObtainX Thor : synchro des packs au lancement (une fois par session,
-      // et seulement si la dernière date de plus de 20 h ; toujours au 1er lancement).
+      // ObtainX Thor: sync subscribed packs at launch (once per session, only if
+      // the last sync is older than 20 hours; always on first launch).
       if (!_packSyncStartedThisSession) {
         _packSyncStartedThisSession = true;
         unawaited(

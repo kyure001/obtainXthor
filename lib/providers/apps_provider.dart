@@ -2001,8 +2001,8 @@ Future<void> bgUpdateCheck(
     return;
   }
 
-  // ObtainX Thor : synchro quotidienne des packs abonnés, avant la recherche
-  // de mises à jour pour que les applis ajoutées soient vérifiées aussitôt.
+  // ObtainX Thor: daily sync of subscribed packs, run before the update check
+  // so newly added apps are checked right away.
   try {
     await syncPacks(
       appsProvider,

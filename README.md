@@ -1,17 +1,19 @@
 # ObtainX Thor
 
-Fork personnel d'[ObtainX](https://github.com/bikram-agarwal/ObtainX) (lui-même fork d'[Obtainium](https://github.com/ImranR98/Obtainium)), pensé pour l'AYN Thor.
+A personal fork of [ObtainX](https://github.com/bikram-agarwal/ObtainX) (itself a fork of [Obtainium](https://github.com/ImranR98/Obtainium)), built for the AYN Thor.
 
-**Ajout principal : l'abonnement à des packs Obtainium en ligne.** Réglages → Packs. Les packs abonnés sont synchronisés une fois par jour : les applis nouvelles sont ajoutées sans réimport manuel, celles que tu supprimes ne reviennent pas, tes réglages ne sont jamais écrasés.
+**Main addition: subscriptions to online Obtainium packs.** Settings → Packs. Subscribed packs are synced once a day: new apps are added without any manual re-import, apps you remove do not come back, and your settings are never overwritten. Pack apps are filed into three groups: Emulators, Utilities and Recomp projects.
 
-Packs inclus d'office :
-- [Obtainium Recomp Pack](https://github.com/kyure001/obtainium_recomp_pack) — ports decomp / recomp
-- [Obtainium Emulation Pack](https://github.com/RJNY/Obtainium-Emulation-Pack) (RJNY) — émulateurs, frontends, outils double écran
+Packs included by default:
+- [Obtainium Recomp Pack](https://github.com/kyure001/obtainium_recomp_pack) — decomp / recomp game ports and Thor tools
+- [Obtainium Emulation Pack](https://github.com/RJNY/Obtainium-Emulation-Pack) (RJNY) — emulators, frontends, dual-screen tools
 - [Joey's Retro Handhelds](https://github.com/JoeysRetroHandhelds/joeys-obtainium)
 
-L'APK arm64 signé est publié dans les [releases](https://github.com/kyure001/obtainXthor/releases/latest). Identifiant : `dev.kyure.obtainxthor` (cohabite avec Obtainium et ObtainX).
+The signed arm64 APK is published in the [releases](https://github.com/kyure001/obtainXthor/releases/latest). Package ID: `dev.kyure.obtainxthor`, so it can be installed next to Obtainium and ObtainX. The fork is merged with upstream ObtainX twice a month.
 
-Licence GPL-3.0, comme le projet d'origine. Tout le mérite de l'application revient à ImranR98, Bikram Agarwal et aux contributeurs d'Obtainium / ObtainX.
+The in-app texts added by this fork are in French.
+
+Licensed under GPL-3.0, like the original project. All credit for the app goes to ImranR98, Bikram Agarwal and the Obtainium / ObtainX contributors.
 
 ---
 
