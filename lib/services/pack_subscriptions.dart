@@ -39,6 +39,10 @@ const Set<String> _emulatorCategories = {
   'dual screen', 'émulation pc',
 };
 
+const Set<String> _utilityCategories = {
+  'pack', 'utilities', 'utility', 'utilitaires', 'outil thor',
+};
+
 /// Émulateurs connus que certains packs laissent sans catégorie.
 const Set<String> _knownEmulatorNames = {
   'rpcsx', 'armsx1', 'armsx2', 'armsx3', 'eden', 'nethersx2', 'nethersx2-turnip',
@@ -58,8 +62,11 @@ String familyForPackApp({
   // pack Recomp) : ça prime sur la famille par défaut du pack.
   if (lowerCats.any(_emulatorCategories.contains)) return familyEmulators;
   if (fromRecompPack) {
-    // Le pack se suit lui-même (catégorie « Pack ») : c'est un outil.
-    return lowerCats.contains('pack') ? familyUtilities : familyRecomp;
+    // Le pack se suit lui-même (« Pack ») et peut marquer des outils
+    // (« Utilities ») : ce sont des utilitaires, le reste est un jeu.
+    return lowerCats.any(_utilityCategories.contains)
+        ? familyUtilities
+        : familyRecomp;
   }
   if (lowerCats.any(_emulatorCategories.contains) ||
       _knownEmulatorNames.contains(name.toLowerCase().trim())) {

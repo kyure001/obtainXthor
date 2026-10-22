@@ -84,6 +84,12 @@ void main() {
         familyUtilities,
       );
     });
+    test('une entrée Utilities du pack Recomp va dans Utilitaires', () {
+      expect(
+        familyForPackApp(fromRecompPack: true, categories: ['Utilities'], name: 'SecondDeck'),
+        familyUtilities,
+      );
+    });
     test('émulateurs RJNY / Joey (catégorie ou nom connu)', () {
       expect(familyForPackApp(fromRecompPack: false, categories: ['Emulator'], name: 'PPSSPP'), familyEmulators);
       expect(familyForPackApp(fromRecompPack: false, categories: ['PC Emulation'], name: 'Winlator'), familyEmulators);
