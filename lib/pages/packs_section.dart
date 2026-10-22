@@ -1,6 +1,9 @@
-// ObtainX Thor: "Packs" settings section (UI strings are in French, the app's UI language).
+// ObtainX Thor: "Packs" settings section. Texts come from lib/l10n/thor_strings.dart
+// and follow the app language.
 
+import 'package:easy_localization/easy_localization.dart';
 import 'package:flutter/material.dart';
+import 'package:obtainium/l10n/thor_strings.dart';
 import 'package:obtainium/providers/apps_provider.dart';
 import 'package:obtainium/providers/logs_provider.dart';
 import 'package:obtainium/providers/settings_provider.dart';
@@ -37,6 +40,9 @@ class _PacksSettingsSectionState extends State<PacksSettingsSection> {
     _reload();
   }
 
+  /// Language of the fork's texts: the app language, English if unsupported.
+  String get _lang => thorLanguage(context.locale);
+
   Future<void> _syncNow() async {
     setState(() => _syncing = true);
     try {
@@ -48,10 +54,8 @@ class _PacksSettingsSectionState extends State<PacksSettingsSection> {
       if (!mounted) return;
       showAppToast(
         report == null
-            ? 'Une synchronisation est déjà en cours'
-            : report.failedPacks > 0
-            ? '$report — ${report.failedPacks} pack(s) en échec'
-            : report.toString(),
+            ? thorT('packs.alreadyRunning', _lang)
+            : report.describe(_lang),
         context: context,
         type: report != null && report.failedPacks > 0
             ? ToastType.error
@@ -60,7 +64,11 @@ class _PacksSettingsSectionState extends State<PacksSettingsSection> {
       );
     } catch (e) {
       if (mounted) {
-        showAppToast('Échec : $e', context: context, type: ToastType.error);
+        showAppToast(
+          thorT('packs.failed', _lang, {'error': e}),
+          context: context,
+          type: ToastType.error,
+        );
       }
     } finally {
       if (mounted) {
@@ -73,22 +81,25 @@ class _PacksSettingsSectionState extends State<PacksSettingsSection> {
   Future<void> _addPack() async {
     final nameCtrl = TextEditingController();
     final urlCtrl = TextEditingController();
+    final String lang = _lang;
     final bool? ok = await showDialog<bool>(
       context: context,
       builder: (ctx) => AlertDialog(
-        title: const Text('Ajouter un pack'),
+        title: Text(thorT('packs.add', lang)),
         content: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
             TextField(
               controller: nameCtrl,
-              decoration: const InputDecoration(labelText: 'Nom'),
+              decoration: InputDecoration(
+                labelText: thorT('packs.dialog.name', lang),
+              ),
             ),
             TextField(
               controller: urlCtrl,
               keyboardType: TextInputType.url,
-              decoration: const InputDecoration(
-                labelText: 'URL du fichier JSON',
+              decoration: InputDecoration(
+                labelText: thorT('packs.dialog.url', lang),
                 hintText: 'https://…/pack.json',
               ),
             ),
@@ -97,11 +108,11 @@ class _PacksSettingsSectionState extends State<PacksSettingsSection> {
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(ctx, false),
-            child: const Text('Annuler'),
+            child: Text(thorT('packs.dialog.cancel', lang)),
           ),
           FilledButton(
             onPressed: () => Navigator.pop(ctx, true),
-            child: const Text('Ajouter'),
+            child: Text(thorT('packs.dialog.add', lang)),
           ),
         ],
       ),
@@ -109,7 +120,9 @@ class _PacksSettingsSectionState extends State<PacksSettingsSection> {
     final String url = urlCtrl.text.trim();
     if (ok != true || !url.startsWith('http')) return;
     if (_subs.any((s) => normalizePackUrl(s.url) == normalizePackUrl(url))) {
-      if (mounted) showAppToast('Ce pack est déjà dans la liste', context: context);
+      if (mounted) {
+        showAppToast(thorT('packs.alreadyListed', _lang), context: context);
+      }
       return;
     }
     _subs.add(
@@ -126,13 +139,11 @@ class _PacksSettingsSectionState extends State<PacksSettingsSection> {
   String _subtitle(PackSubscription s) {
     final parts = <String>[Uri.tryParse(s.url)?.host ?? s.url];
     if (s.lastSync != null) {
-      final d = s.lastSync!.toLocal();
-      String two(int n) => n.toString().padLeft(2, '0');
       parts.add(
-        '${two(d.day)}/${two(d.month)} ${two(d.hour)}:${two(d.minute)} — ${s.lastResult ?? ''}',
+        '${thorDate(s.lastSync!.toLocal(), _lang)} — ${s.displayResult(_lang) ?? ''}',
       );
     } else {
-      parts.add('Jamais synchronisé');
+      parts.add(thorT('packs.neverSynced', _lang));
     }
     return parts.join('\n');
   }
@@ -143,17 +154,13 @@ class _PacksSettingsSectionState extends State<PacksSettingsSection> {
     return M3eExpressiveSettingsCard(
       colorScheme: cs,
       items: [
-        const Padding(
-          padding: EdgeInsets.fromLTRB(16, 12, 16, 4),
-          child: Text(
-            'Les packs abonnés sont synchronisés automatiquement une fois par '
-            'jour : seules les applis nouvelles sont ajoutées, celles que tu '
-            'supprimes ne reviennent pas.',
-          ),
+        Padding(
+          padding: const EdgeInsets.fromLTRB(16, 12, 16, 4),
+          child: Text(thorT('packs.intro', _lang)),
         ),
         for (final s in _subs)
           SwitchListTile(
-            title: Text(s.name),
+            title: Text(s.displayName(_lang)),
             subtitle: Text(
               _subtitle(s),
               style: s.lastError ? TextStyle(color: cs.error) : null,
@@ -167,7 +174,7 @@ class _PacksSettingsSectionState extends State<PacksSettingsSection> {
             secondary: s.builtin
                 ? const Icon(Icons.inventory_2_rounded)
                 : IconButton(
-                    tooltip: 'Retirer',
+                    tooltip: thorT('packs.remove', _lang),
                     icon: const Icon(Icons.delete_outline_rounded),
                     onPressed: () async {
                       _subs.remove(s);
@@ -190,12 +197,12 @@ class _PacksSettingsSectionState extends State<PacksSettingsSection> {
                         child: CircularProgressIndicator(strokeWidth: 2),
                       )
                     : const Icon(Icons.sync_rounded),
-                label: const Text('Synchroniser maintenant'),
+                label: Text(thorT('packs.syncNow', _lang)),
               ),
               OutlinedButton.icon(
                 onPressed: _addPack,
                 icon: const Icon(Icons.add_rounded),
-                label: const Text('Ajouter un pack'),
+                label: Text(thorT('packs.add', _lang)),
               ),
             ],
           ),

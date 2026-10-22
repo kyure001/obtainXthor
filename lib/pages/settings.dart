@@ -40,7 +40,9 @@ import 'package:obtainium/theme.dart';
 import 'package:obtainium/theme/app_dialog_theme.dart';
 import 'package:obtainium/theme/app_form_field_styles.dart';
 import 'package:obtainium/theme/app_theme_accent.dart';
+import 'package:obtainium/l10n/thor_strings.dart';
 import 'package:obtainium/pages/packs_section.dart';
+import 'package:obtainium/services/pack_subscriptions.dart';
 import 'package:obtainium/theme/m3e_expressive_list.dart';
 import 'package:obtainium/widgets/app_toast.dart';
 import 'package:obtainium/services/pick_file.dart';
@@ -2248,6 +2250,14 @@ class _LocaleMenu extends StatelessWidget {
                   )
                   .key;
         sp.forcedLocale = selectedLocale;
+        // ObtainX Thor: rename the app-list groups to the new language.
+        unawaited(
+          localizeFamilyCategories(
+            context.read<AppsProvider>(),
+            sp,
+            lang: thorLanguage(selectedLocale),
+          ).catchError((_) {}),
+        );
         if (selectedLocale != null) {
           unawaited(context.setLocale(selectedLocale));
         } else {

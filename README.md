@@ -11,7 +11,7 @@ Packs included by default:
 
 The signed arm64 APK is published in the [releases](https://github.com/kyure001/obtainXthor/releases/latest). Package ID: `dev.kyure.obtainxthor`, so it can be installed next to Obtainium and ObtainX. The fork is merged with upstream ObtainX twice a month.
 
-The in-app texts added by this fork are in French.
+The app follows the language chosen in Settings → Appearance → Language (system language by default). The texts and group names added by this fork are available in English and French, in a single file: [`lib/l10n/thor_strings.dart`](lib/l10n/thor_strings.dart). To add a language, copy the `en` block there and translate it; any other language falls back to English.
 
 Licensed under GPL-3.0, like the original project. All credit for the app goes to ImranR98, Bikram Agarwal and the Obtainium / ObtainX contributors.
 

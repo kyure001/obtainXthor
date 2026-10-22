@@ -52,7 +52,7 @@ jobs:
         run: flutter test test/pack_merge_test.dart
 
       - name: Analyze ObtainX Thor code
-        run: flutter analyze --no-fatal-infos --no-fatal-warnings lib/services/pack_subscriptions.dart lib/pages/packs_section.dart lib/main.dart lib/providers/apps_provider.dart lib/pages/settings.dart
+        run: flutter analyze --no-fatal-infos --no-fatal-warnings lib/l10n/thor_strings.dart lib/services/pack_subscriptions.dart lib/pages/packs_section.dart lib/main.dart lib/providers/apps_provider.dart lib/pages/settings.dart
 
       - name: Signing
         id: signing

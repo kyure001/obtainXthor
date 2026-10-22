@@ -9,12 +9,14 @@
 // - every pack app is filed into one of three families (emulators,
 //   utilities, recomp projects), without overriding manual changes.
 //
-// User-facing strings stay in French on purpose: the app's UI language.
+// Texts and group names are translated in lib/l10n/thor_strings.dart and follow
+// the app language (Settings → Appearance → Language, system language by default).
 
 import 'dart:async';
 import 'dart:convert';
 
 import 'package:http/http.dart' as http;
+import 'package:obtainium/l10n/thor_strings.dart';
 import 'package:obtainium/providers/apps_provider.dart';
 import 'package:obtainium/providers/logs_provider.dart';
 import 'package:obtainium/providers/settings_provider.dart';
@@ -25,16 +27,21 @@ const String packLastSyncPrefKey = 'thorPackLastSync';
 
 const String packGroupingInitPrefKey = 'thorPackGroupingInit';
 
-/// The three families shown in the app list. Each pack app gets exactly one
-/// category, otherwise ObtainX would show it in several groups.
-const String familyEmulators = 'Émulateurs';
-const String familyUtilities = 'Utilitaires';
-const String familyRecomp = 'Projets recomp';
+/// The three families shown in the app list, by stable ID. Each pack app gets
+/// exactly one category, otherwise ObtainX would show it in several groups.
+/// The category name is the family name in the app language (see
+/// lib/l10n/thor_strings.dart) and is renamed when the language changes.
+const String familyEmulators = 'emulators';
+const String familyUtilities = 'utilities';
+const String familyRecomp = 'recomp';
 const Map<String, int> familyColors = {
   familyEmulators: 0xFF3D7BD9,
   familyUtilities: 0xFF5E8C61,
   familyRecomp: 0xFFE8833A,
 };
+
+/// Language of the fork's texts for this settings provider.
+String packLanguage(SettingsProvider sp) => thorLanguage(sp.forcedLocale);
 
 const Set<String> _emulatorCategories = {
   'emulator', 'emulators', 'émulateur', 'émulateurs', 'pc emulation',
@@ -53,7 +60,7 @@ const Set<String> _knownEmulatorNames = {
   'retroarch (aarch64)', 'vita3k', 'winlator', 'gopher64', 'xemu android',
 };
 
-/// Family of an app coming from a pack.
+/// Family ID of an app coming from a pack.
 String familyForPackApp({
   required bool fromRecompPack,
   required List<String> categories,
@@ -83,19 +90,23 @@ bool isRecompPackUrl(String url) =>
 /// Minimum delay between two automatic syncs.
 const Duration packAutoSyncInterval = Duration(hours: 20);
 
-/// Built-in packs. They can be disabled but not removed.
+/// Built-in packs. They can be disabled but not removed. 'key' points to the
+/// translated name in lib/l10n/thor_strings.dart.
 const List<Map<String, String>> builtinPacks = [
   {
-    'name': 'Recomp Pack (ports decomp/recomp)',
+    'key': 'pack.recomp',
+    'name': 'Recomp Pack (decomp/recomp ports)',
     'url':
         'https://github.com/kyure001/obtainium_recomp_pack/releases/latest/download/thor-pack.json',
   },
   {
+    'key': 'pack.rjny',
     'name': 'Obtainium Emulation Pack (RJNY)',
     'url':
         'https://raw.githubusercontent.com/RJNY/Obtainium-Emulation-Pack/main/obtainium-emulation-pack-latest.json',
   },
   {
+    'key': 'pack.joey',
     'name': "Joey's Retro Handhelds",
     'url':
         'https://github.com/JoeysRetroHandhelds/joeys-obtainium/releases/latest/download/joeys-obtainium.json',
@@ -113,6 +124,9 @@ class PackSubscription {
     this.lastSync,
     this.lastResult,
     this.lastError = false,
+    this.lastAdded,
+    this.lastErrorText,
+    this.nameKey,
   }) : seen = seen ?? <String>{},
        categorized = categorized ?? <String>{};
 
@@ -128,8 +142,36 @@ class PackSubscription {
   /// category changed by hand is never overridden).
   Set<String> categorized;
   DateTime? lastSync;
+
+  /// Legacy free-text result (versions before translations); display only.
   String? lastResult;
   bool lastError;
+
+  /// Number of apps added by the last sync (null before any sync).
+  int? lastAdded;
+
+  /// Technical error of the last sync, untranslated (e.g. "HTTP 404").
+  String? lastErrorText;
+
+  /// Translation key of a built-in pack's name.
+  String? nameKey;
+
+  /// Name to display in [lang].
+  String displayName(String lang) =>
+      nameKey != null ? thorT(nameKey!, lang) : name;
+
+  /// Last sync result to display in [lang], or null if never synced.
+  String? displayResult(String lang) {
+    if (lastError && lastErrorText != null) {
+      return thorT('packs.failed', lang, {'error': lastErrorText});
+    }
+    if (lastAdded != null) {
+      return lastAdded == 0
+          ? thorT('packs.upToDate', lang)
+          : thorT('packs.appsAdded', lang, {'n': lastAdded});
+    }
+    return lastResult;
+  }
 
   Map<String, dynamic> toJson() => {
     'name': name,
@@ -141,6 +183,8 @@ class PackSubscription {
     'lastSync': lastSync?.toIso8601String(),
     'lastResult': lastResult,
     'lastError': lastError,
+    'lastAdded': lastAdded,
+    'lastErrorText': lastErrorText,
   };
 
   factory PackSubscription.fromJson(Map<String, dynamic> j) => PackSubscription(
@@ -159,6 +203,8 @@ class PackSubscription {
         : DateTime.tryParse(j['lastSync'].toString()),
     lastResult: j['lastResult']?.toString(),
     lastError: j['lastError'] == true,
+    lastAdded: j['lastAdded'] is int ? j['lastAdded'] as int : null,
+    lastErrorText: j['lastErrorText']?.toString(),
   );
 }
 
@@ -220,9 +266,18 @@ List<PackSubscription> loadPackSubscriptions(SettingsProvider sp) {
       (s) => normalizePackUrl(s.url) == normalizePackUrl(b['url']!),
     );
     if (existing.isEmpty) {
-      subs.add(PackSubscription(name: b['name']!, url: b['url']!, builtin: true));
+      subs.add(
+        PackSubscription(
+          name: b['name']!,
+          url: b['url']!,
+          builtin: true,
+          nameKey: b['key'],
+        ),
+      );
     } else {
-      existing.first.builtin = true;
+      existing.first
+        ..builtin = true
+        ..nameKey = b['key'];
     }
   }
   return subs;
@@ -248,10 +303,19 @@ class PackSyncReport {
   int added = 0;
   int failedPacks = 0;
   final List<String> addedNames = [];
+
+  /// Summary in [lang].
+  String describe(String lang) {
+    final String base = added == 0
+        ? thorT('packs.noNewApps', lang)
+        : thorT('packs.newApps', lang, {'n': added, 'names': addedNames.join(', ')});
+    return failedPacks > 0
+        ? thorT('packs.failedPacks', lang, {'report': base, 'n': failedPacks})
+        : base;
+  }
+
   @override
-  String toString() => added == 0
-      ? 'Aucune nouvelle appli'
-      : '$added nouvelle(s) appli(s) : ${addedNames.join(', ')}';
+  String toString() => describe(thorFallbackLanguage);
 }
 
 bool _syncRunning = false;
@@ -275,8 +339,10 @@ Future<PackSyncReport?> syncPacks(
   }
   _syncRunning = true;
   final PackSyncReport report = PackSyncReport();
+  final String lang = packLanguage(sp);
   try {
     await appsProvider.waitForAppsToLoad();
+    await localizeFamilyCategories(appsProvider, sp);
     final List<PackSubscription> subs = loadPackSubscriptions(sp);
     final Set<String> packCategoryNames = {};
     for (final sub in subs.where((s) => s.enabled)) {
@@ -308,10 +374,13 @@ Future<PackSyncReport?> syncPacks(
         final bool fromRecomp = isRecompPackUrl(sub.url);
         String keyOf(App a) => a.id.isNotEmpty ? a.id : normalizePackUrl(a.url);
         List<String> familyOf(App a) => [
-          familyForPackApp(
-            fromRecompPack: fromRecomp,
-            categories: a.categories,
-            name: a.finalName,
+          thorFamilyName(
+            familyForPackApp(
+              fromRecompPack: fromRecomp,
+              categories: a.categories,
+              name: a.finalName,
+            ),
+            lang,
           ),
         ];
 
@@ -351,7 +420,7 @@ Future<PackSyncReport?> syncPacks(
           final App? mine = byId[p.id] ?? byUrl[normalizePackUrl(p.url)];
           if (mine == null) continue;
           // Already filed (by another pack or by hand): leave it alone.
-          if (mine.categories.any(familyColors.containsKey)) continue;
+          if (mine.categories.any((c) => thorFamilyIdOf(c) != null)) continue;
           final fam = familyOf(p);
           if (mine.categories.length != 1 || mine.categories.first != fam.first) {
             recategorized.add(mine.copyWith(categories: fam));
@@ -376,25 +445,26 @@ Future<PackSyncReport?> syncPacks(
           ..seen = plan.newSeen
           ..lastSync = DateTime.now()
           ..lastError = false
-          ..lastResult = toSave.isEmpty
-              ? 'À jour'
-              : '${toSave.length} appli(s) ajoutée(s)';
+          ..lastErrorText = null
+          ..lastResult = null
+          ..lastAdded = toSave.length;
       } catch (e) {
         report.failedPacks++;
         sub
           ..lastSync = DateTime.now()
           ..lastError = true
-          ..lastResult = 'Échec : $e';
+          ..lastResult = null
+          ..lastErrorText = '$e';
         unawaited(logs?.add('Pack ${sub.name}: $e', level: LogLevel.warning));
       }
     }
     await savePackSubscriptions(sp, subs);
-    _applyFamilies(appsProvider, sp, packCategoryNames);
+    _applyFamilies(appsProvider, sp, packCategoryNames, lang);
     await sp.prefs?.setString(
       packLastSyncPrefKey,
       DateTime.now().toIso8601String(),
     );
-    unawaited(logs?.add('Synchro des packs : $report'));
+    unawaited(logs?.add('Pack sync: $report'));
     return report;
   } finally {
     _syncRunning = false;
@@ -408,12 +478,14 @@ void _applyFamilies(
   AppsProvider appsProvider,
   SettingsProvider sp,
   Set<String> packCategoryNames,
+  String lang,
 ) {
   final Map<String, int> cats = sp.categories;
   bool changed = false;
-  familyColors.forEach((k, v) {
-    if (!cats.containsKey(k)) {
-      cats[k] = v;
+  familyColors.forEach((id, color) {
+    final String name = thorFamilyName(id, lang);
+    if (!cats.containsKey(name)) {
+      cats[name] = color;
       changed = true;
     }
   });
@@ -421,7 +493,7 @@ void _applyFamilies(
     for (final a in appsProvider.getAppValues()) ...a.app.categories,
   };
   for (final name in packCategoryNames) {
-    if (familyColors.containsKey(name)) continue;
+    if (thorFamilyIdOf(name) != null) continue;
     if (cats.containsKey(name) && !used.contains(name)) {
       cats.remove(name);
       changed = true;
@@ -431,12 +503,52 @@ void _applyFamilies(
   // The app itself goes into utilities if it has no category.
   final self = appsProvider.apps[obtainiumId]?.app;
   if (self != null && self.categories.isEmpty) {
-    unawaited(appsProvider.saveApps([self.copyWith(categories: [familyUtilities])]));
+    unawaited(
+      appsProvider.saveApps([
+        self.copyWith(categories: [thorFamilyName(familyUtilities, lang)]),
+      ]),
+    );
   }
   if (sp.prefs?.getBool(packGroupingInitPrefKey) != true) {
     sp.prefs?.setBool(packGroupingInitPrefKey, true);
     if (sp.appsListGroupBy == AppsListGroupBy.none) {
       sp.appsListGroupBy = AppsListGroupBy.category;
+    }
+  }
+}
+
+/// Renames the family categories to the current app language (e.g.
+/// « Émulateurs » → "Emulators" after switching to English). Apps keep their
+/// group; colors are preserved. Safe to call often: does nothing when the
+/// names already match.
+Future<void> localizeFamilyCategories(
+  AppsProvider appsProvider,
+  SettingsProvider sp, {
+  String? lang,
+}) async {
+  final String target = lang ?? packLanguage(sp);
+  await appsProvider.waitForAppsToLoad();
+  for (final id in thorFamilyIds) {
+    final String wanted = thorFamilyName(id, target);
+    final List<String> stale = sp.categories.keys
+        .where((c) => c != wanted && thorFamilyIdOf(c) == id)
+        .toList();
+    for (final old in stale) {
+      // Move the apps first, then swap the category itself.
+      final List<App> moved = [
+        for (final a in appsProvider.getAppValues().map((e) => e.app))
+          if (a.categories.contains(old))
+            a.copyWith(
+              categories: {
+                for (final c in a.categories) c == old ? wanted : c,
+              }.toList(),
+            ),
+      ];
+      if (moved.isNotEmpty) await appsProvider.saveApps(moved);
+      final Map<String, int> cats = sp.categories;
+      final int color = cats.remove(old) ?? familyColors[id]!;
+      cats.putIfAbsent(wanted, () => color);
+      sp.setCategories(cats, appsProvider: appsProvider);
     }
   }
 }

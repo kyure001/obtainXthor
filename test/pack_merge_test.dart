@@ -1,4 +1,7 @@
+import 'dart:ui' show Locale;
+
 import 'package:flutter_test/flutter_test.dart';
+import 'package:obtainium/l10n/thor_strings.dart';
 import 'package:obtainium/services/pack_subscriptions.dart';
 
 void main() {
@@ -106,5 +109,49 @@ void main() {
   test('isRecompPackUrl', () {
     expect(isRecompPackUrl('https://github.com/kyure001/obtainium_recomp_pack/releases/latest/download/thor-pack.json'), isTrue);
     expect(isRecompPackUrl('https://raw.githubusercontent.com/RJNY/Obtainium-Emulation-Pack/main/x.json'), isFalse);
+  });
+
+  group('thor_strings', () {
+    test('every language defines every English key', () {
+      final Set<String> keys = thorStrings['en']!.keys.toSet();
+      for (final lang in thorStrings.keys) {
+        expect(thorStrings[lang]!.keys.toSet(), keys, reason: lang);
+      }
+    });
+    test('unknown language falls back to English', () {
+      expect(thorLanguage(const Locale('de')), 'en');
+      expect(thorLanguage(const Locale('fr', 'CA')), 'fr');
+      expect(thorT('family.emulators', 'de'), 'Emulators');
+    });
+    test('placeholders are replaced', () {
+      expect(thorT('packs.appsAdded', 'fr', {'n': 3}), '3 appli(s) ajoutée(s)');
+      expect(thorT('packs.failed', 'en', {'error': 'HTTP 404'}), 'Failed: HTTP 404');
+    });
+    test('family names are recognized in every language', () {
+      expect(thorFamilyIdOf('Émulateurs'), 'emulators');
+      expect(thorFamilyIdOf('Emulators'), 'emulators');
+      expect(thorFamilyIdOf('Projets recomp'), 'recomp');
+      expect(thorFamilyIdOf('Recomp projects'), 'recomp');
+      expect(thorFamilyIdOf('Nintendo 64'), isNull);
+      expect(thorFamilyName(familyUtilities, 'fr'), 'Utilitaires');
+      expect(thorFamilyName(familyUtilities, 'en'), 'Utilities');
+    });
+    test('date format follows the language', () {
+      final d = DateTime(2026, 10, 22, 7, 5);
+      expect(thorDate(d, 'fr'), '22/10 07:05');
+      expect(thorDate(d, 'en'), '10/22 07:05');
+    });
+  });
+
+  test('subscription result is translated at display time', () {
+    final s = PackSubscription(name: 'x', url: 'u', nameKey: 'pack.recomp')
+      ..lastAdded = 0;
+    expect(s.displayResult('fr'), 'À jour');
+    expect(s.displayResult('en'), 'Up to date');
+    expect(s.displayName('en'), 'Recomp Pack (decomp/recomp ports)');
+    s
+      ..lastError = true
+      ..lastErrorText = 'HTTP 500';
+    expect(s.displayResult('fr'), 'Échec : HTTP 500');
   });
 }

@@ -906,6 +906,13 @@ class _ObtainiumState extends State<Obtainium> with WidgetsBindingObserver {
       // the last sync is older than 20 hours; always on first launch).
       if (!_packSyncStartedThisSession) {
         _packSyncStartedThisSession = true;
+        // Group names follow the app language (it may have changed since).
+        unawaited(
+          localizeFamilyCategories(
+            appsProvider,
+            settingsProvider,
+          ).catchError((_) {}),
+        );
         unawaited(
           syncPacks(
             appsProvider,
